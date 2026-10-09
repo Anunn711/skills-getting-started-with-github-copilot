@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Clear loading message
       activitiesList.innerHTML = "";
+      activitySelect.length = 1;
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -25,9 +26,34 @@ document.addEventListener("DOMContentLoaded", () => {
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants">
+            <h5>Participants</h5>
+            <ul class="participant-list"></ul>
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
+
+        const participantList = activityCard.querySelector(".participant-list");
+        details.participants.forEach((participant) => {
+          const participantItem = document.createElement("li");
+          participantItem.className = "participant-item";
+
+          const participantEmail = document.createElement("span");
+          participantEmail.textContent = participant;
+
+          const deleteButton = document.createElement("button");
+          deleteButton.className = "delete-participant";
+          deleteButton.type = "button";
+          deleteButton.dataset.activity = name;
+          deleteButton.dataset.email = participant;
+          deleteButton.setAttribute("aria-label", `Unregister ${participant}`);
+          deleteButton.title = "Unregister participant";
+          deleteButton.textContent = "×";
+
+          participantItem.append(participantEmail, deleteButton);
+          participantList.appendChild(participantItem);
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
@@ -62,6 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        await fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -78,6 +105,31 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+    }
+  });
+
+  activitiesList.addEventListener("click", async (event) => {
+    const deleteButton = event.target.closest(".delete-participant");
+    if (!deleteButton) {
+      return;
+    }
+
+    try {
+      const activity = deleteButton.dataset.activity;
+      const email = deleteButton.dataset.email;
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activity)}/participants/${encodeURIComponent(email)}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.detail || "Failed to unregister participant");
+      }
+
+      await fetchActivities();
+    } catch (error) {
+      console.error("Error unregistering participant:", error);
     }
   });
 
